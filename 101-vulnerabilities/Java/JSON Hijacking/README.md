@@ -26,8 +26,20 @@ There are multiple methods to address this issue:
 
 # Que merda pode dar :shit:
 
+Um invasor pode criar uma página da Web maliciosa e, por meio de engenharia social, conseguir que um usuário a acesse. Se esse usuário usar um navegador desatualizado e estiver conectado ao aplicativo vulnerável, o invasor poderá recuperar o conteúdo de objetos JSON, ignorando o SOP e lendo o conteúdo desses objetos e qualquer informação confidencial nele contida. Observe que, embora esse problema geralmente se aplique a navegadores desatualizados, herdados e obsoletos, problemas de sequestro de JSON também surgem periodicamente em navegadores mais modernos.
 
 # Porquê :question:
 
+O seguinte é necessário para que o aplicativo seja vulnerável:
+- O aplicativo deve estar usando autenticação baseada em cookie
+- O aplicativo responde de maneira autenticada a uma solicitação GET simples
+- Esses dados confidenciais são retornados como um JSON, especificamente em formato de array (entre colchetes []) e contendo objetos dentro do array
+ 
+Ao retornar um array JSON, um invasor pode criar um site malicioso, que incorpora uma tag <code>&lt;script&gt;</code> em sua página da seguinte maneira:<code>&lt;script src="https:// example.com/path/to/vulnerable/page"&gt;&lt;/script&gt;</code>O navegador interpretará o valor retornado como um objeto, fazendo com que ele exista temporariamente no DOM da página maliciosa; porém como este objeto não é atribuído ou referenciado, ele será efêmero, e normalmente seria imediatamente descartado. Isso é semelhante a qualquer outra declaração ou valor de retorno sem uma atribuição, e a página da Web maliciosa seria incapaz de fazer referência a ela de qualquer maneira. Para realmente explorar esse problema em um navegador vulnerável, um invasor teria que ser capaz de substituir o função de protótipo para setters, que normalmente é restrita. Se o navegador for vulnerável e permitir a substituição de certos protótipos principais para setters em Javascript no contexto da página da Web, eles poderão criar um Javascript que, uma vez que uma página vulnerável seja incluída no método, um objeto iniciará a construção, acionará o setter substituído protótipos com o conteúdo do objeto JSON como valores, e um invasor poderia acessar esses valores no contexto de sua página da Web maliciosa. A partir desse ponto - acessá-los seria trivial.
 
 # Faz direito! :bulb:
+
+Existem vários métodos para resolver esse problema:
+- Não responda com arrays JSON, pois eles são agrupados com colchetes, que imediatamente são avaliados como objetos; se necessário, envolva a matriz com um objeto externo (por exemplo, {"array":[]}) ou adicione algum tipo de prefixo para evitar esse problema
+- Se necessário, responda com arrays JSON apenas para requisição POST; garantir que nenhuma informação confidencial seja retornada como uma matriz para uma solicitação GET
+- Prefixe o objeto JSON com JavaScript (<code>for(;;);</code>) ou um JSON não analisável (<code>{};</code>) e, antes de processá-lo no cliente, retire este prefixo; o último fará com que a importação falhe e o primeiro fará com que a importação trave para sempre - de qualquer forma, isso impedirá que um invasor importe um objeto JSON como um script
